@@ -5,14 +5,15 @@
 **Authors:** Abby Tucker & Mike Moyer
 **Institution:** Auburn University
 **Course:** INSY6500 - Python for Analytics  
-
 **Semester:** Fall 2025
+
 ---
+
 ## Project Overview
 This project performs exploratory data analysis on one year of preventive maintenance (PM) forecast data from an automotive manufacturing facility. The dataset contains scheduled maintenance activities across multiple production areas, providing insights into maintenance planning, resource allocation, and operational patterns in a real-world manufacturing environment.
 
 ### Why This Dataset?
-As a maintenance professional working at Honda Manufacturing of Alabama, I selected this dataset because it represents the complexity of real-world maintenance operations that I encounter daily. The data offers opportunities to explore maintenance scheduling patterns, labor allocation, departmental workload distribution, and the relationships between equipment types and maintenance strategies—all critical factors in maintenance workload planning and efficiency.
+As a maintenance professional working at Honda Manufacturing of Alabama, I selected this dataset because it represents the complexity of real-world maintenance operations that I encounter daily. The data offers opportunities to explore maintenance scheduling patterns, labor allocation, departmental workload distribution, and the relationships between equipment types and maintenance strategies, all critical factors in maintenance workload planning and efficiency.
 
 ---
 ## Dataset Description
@@ -34,13 +35,13 @@ As a maintenance professional working at Honda Manufacturing of Alabama, I selec
  
 | Feature | Description | Type |
 |---------|-------------|------|
-| `DUE\_DATE` | Scheduled completion date for PM activity | Date |
+| `DUE_DATE` | Scheduled completion date for PM activity | Date |
 | `PMNUM` | Unique preventive maintenance identifier | String |
 | `PMDESCRIPTION` | Description of the maintenance task | String |
 | `INTERVAL` | Frequency of maintenance (e.g., 1-MONTHS, 6-MONTHS) | String |
 | `FORECASTJP` | Job plan forecast identifier | String |
-| `JOB\_TYPE` | Type of work (REPAIR, INSPECTION, ADJUSTMENT) | Categorical |
-| `LABOR\_CRAFT` | Required labor skill/craft | Categorical |
+| `JOB_TYPE` | Type of work (REPAIR, INSPECTION, ADJUSTMENT) | Categorical |
+| `LABOR_CRAFT` | Required labor skill/craft | Categorical |
 | `LABORHRS` | Estimated labor hours | Float |
 | `THISMATCOST` | Estimated material cost | Float |
 | `PMSCOPETYPE` | Scope type (LOCATION, ASSET) | Categorical |
@@ -48,8 +49,8 @@ As a maintenance professional working at Honda Manufacturing of Alabama, I selec
 | `LOCATIONDESC` | Human-readable location description | String |
 | `PLANT` | Plant identifier | String |
 | `DEPT` | Department code | String |
-| `DEPT\_NAME` | Department name | String |
-| `DEPT\_TYPE` | Department type abbreviation | String |
+| `DEPT_NAME` | Department name | String |
+| `DEPT_TYPE` | Department type abbreviation | String |
 | `LINE` | Production line identifier | String |
 | `ZONENAME` | Manufacturing zone name | String |
 | `PROCESSNAME` | Process area name | String |
@@ -59,11 +60,11 @@ As a maintenance professional working at Honda Manufacturing of Alabama, I selec
 ## Research Questions
 This analysis is driven by practical questions that impact maintenance operations and resource planning:
 
-### \*\*\[DRAFT]\*\* Primary Questions \*\*\[DRAFT]\*\* 
-1\. \*\*Workload Distribution:\*\* How is preventive maintenance workload distributed across departments and time periods? Are there opportunities for better load balancing?
-2\. \*\*Resource Planning:\*\* What are the labor hour requirements by craft and department? Can we identify peak demand periods that require additional staffing?
-3\. \*\*Maintenance Strategy:\*\* What is the distribution of maintenance intervals across different equipment types? Are there patterns that suggest opportunities for interval optimization?
-4\. \*\*Job Type Analysis:\*\* How do different job types (REPAIR, INSPECTION, ADJUSTMENT) distribute across departments and equipment? What does this reveal about maintenance strategies?
+### **[DRAFT]** Primary Questions **[DRAFT]** 
+1. **Workload Distribution:** How is preventive maintenance workload distributed across departments and time periods? Are there opportunities for better load balancing?
+2. **Resource Planning:** What are the labor hour requirements by craft and department? Can we identify peak demand periods that require additional staffing?
+3. **Maintenance Strategy:** What is the distribution of maintenance intervals across different equipment types? Are there patterns that suggest opportunities for interval optimization?
+4. **Job Type Analysis:** How do different job types (REPAIR, INSPECTION, ADJUSTMENT) distribute across departments and equipment? What does this reveal about maintenance strategies?
 
  
 
@@ -82,14 +83,14 @@ py4eda/
 │
 ├── README.md                          # This file
 ├── data/
-│   └── 103ki\_aap\_pm\_forecast\_limit10020251118.csv
+│   └── 103ki_aap_pm_forecast_limit10020251118.csv
 │
-├── notebooks/
-│   ├── 01\_data\_loading\_reconnaissance.ipynb
-│   ├── 02\_data\_quality\_assessment.ipynb
-│   ├── 03\_cleaning\_and\_transformation.ipynb
-│   ├── 04\_statistical\_eda.ipynb
-│   └── 05\_feature\_engineering\_insights.ipynb
+├── notebooks/ **[DRAFT]**
+│   ├── 01_data_loading_reconnaissance.ipynb
+│   ├── 02_data_quality_assessment.ipynb
+│   ├── 03_cleaning_and_transformation.ipynb
+│   ├── 04_statistical_eda.ipynb
+│   └── 05_feature_engineering_insights.ipynb
 │
 ├── src/
 │   └── pm_dashboard.py                # Streamlit interactive dashboard
@@ -99,8 +100,8 @@ py4eda/
 │   └── analysis_summary.md
 │
 └── requirements.txt
-
 ```
+
 ---
 
 ## Methodology
@@ -126,6 +127,7 @@ This project follows the iterative EDA workflow outlined in INSY6500:
 - Address outliers and anomalies
 - Standardize categorical values
 - Document all cleaning decisions and rationale
+
 ### 4. Statistical EDA
 - Univariate analysis (distributions, summary stats)
 - Bivariate analysis (correlations, relationships)
@@ -150,18 +152,18 @@ This project follows the iterative EDA workflow outlined in INSY6500:
 
 ## Tools & Technologies
 
-- \*\*Python 3.11+\*\*
+- **Python 3.11+**
 
-- \*\*Core Libraries:\*\*
+- **Core Libraries:**
 
  - `pandas` - Data manipulation and analysis
  - `numpy` - Numerical computing
  - `matplotlib` - Static visualization
  - `seaborn` - Statistical visualization
  - `plotly` - Interactive visualization
-- \*\*Dashboard:\*\*
- - `streamlit` - Interactive web application
-- \*\*Development:\*\*
+- **Dashboard:**
+  - `streamlit` - Interactive web application
+- **Development:**
   - `jupyter` - Notebook environment
   - `git` - Version control
 
@@ -226,11 +228,11 @@ streamlit run src/pm\_dashboard.py
 ---
 
 ## Limitations \& Considerations
-- \*\*Forecast Data:\*\* This is planned maintenance, not actual execution data. Actual work may vary due to production requirements, equipment breakdowns, or resource availability.
-- \*\*Timeframe:\*\* One-year forecast provides a snapshot but may not capture multi-year maintenance strategy cycles or long-interval PMs.
-- \*\*Cost Data:\*\* Material cost field (`THISMATCOST`) is largely unpopulated, limiting cost analysis capabilities.
-- \*\*Confidentiality:\*\* Specific equipment identifiers and some operational details have been retained but should be considered proprietary to Honda Manufacturing.
-- \*\*Generalizability:\*\* Findings are specific to this manufacturing facility and may not directly apply to other automotive plants or industries.
+- **Forecast Data:** This is planned maintenance, not actual execution data. Actual work may vary due to production requirements, equipment breakdowns, or resource availability.
+- **Timeframe:** One-year forecast provides a snapshot but may not capture multi-year maintenance strategy cycles or long-interval PMs.
+- **Cost Data:** Material cost field (`THISMATCOST`) is largely unpopulated, limiting cost analysis capabilities.
+- **Confidentiality:** Specific equipment identifiers and some operational details have been retained but should be considered proprietary to Honda Manufacturing.
+- **Generalizability:** Findings are specific to this manufacturing facility and may not directly apply to other automotive plants or industries.
 
 ---
 
@@ -256,15 +258,16 @@ This project is for educational purposes as part of INSY6500 coursework. The dat
 
 ## Contact
 
-**Abby Tucker**
-**Mike Moyer**
+**Abby Tucker**, **Mike Moyer**
+
 Students, INSY6500 - Python for Analytics  
+
 Auburn University
 
 For questions about the analysis or methodology, please refer to project documentation in the notebooks.
 
 ---
-\*Created: November 2025\*
+*Created: November 2025*
 
 
 
