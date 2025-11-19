@@ -1,0 +1,86 @@
+╔════════════════════════════════════════════════════════════════════════╗
+║                    GIT COMMIT MESSAGE QUICK REFERENCE                  ║
+╠════════════════════════════════════════════════════════════════════════╣
+║                                                                        
+║  FORMAT:  <type>(<scope>): <subject>                                   
+║                                                                        
+║  Example: add(eda): statistical analysis of PM intervals               
+║                                                                        
+╠════════════════════════════════════════════════════════════════════════╣
+║  TYPES                                                                 ║
+╠════════════════════════════════════════════════════════════════════════╣
+║  add        - New notebook, analysis, or feature                       
+║  update     - Modify existing analysis or code                         
+║  fix        - Bug fix or correction                                    
+║  refactor   - Improve code without changing behavior                   
+║  docs       - Documentation only                                       
+║  perf       - Performance improvement                                  
+║  test       - Testing or validation                                    
+║  chore      - Maintenance, cleanup, setup                              
+║  style      - Code formatting, whitespace, comments                    
+╠════════════════════════════════════════════════════════════════════════╣
+║  SCOPES                                                                ║
+╠════════════════════════════════════════════════════════════════════════╣
+║  By workflow stage:                                                    
+║    data, cleaning, eda, viz, features                                  
+║                                                                        
+║  By deliverable:                                                       
+║    notebook, dashboard, docs                                           
+║                                                                        
+║  By content area:                                                      
+║    labor, scheduling, workload, intervals, departments                 
+╠════════════════════════════════════════════════════════════════════════╣
+║  SUBJECT LINE RULES                                                    ║
+╠════════════════════════════════════════════════════════════════════════╣
+║  ✓ Use imperative mood ("add" not "added")                            
+║  ✓ Lowercase after colon                                              
+║  ✓ No period at end                                                   
+║  ✓ Keep under 60 characters                                           
+║  ✓ Be specific and descriptive                                        
+╠════════════════════════════════════════════════════════════════════════╣
+║  GOOD EXAMPLES                                                         ║
+╠════════════════════════════════════════════════════════════════════════╣
+║  add(data): initial PM forecast dataset                               
+║  add(notebook): data loading and reconnaissance                       
+║  fix(cleaning): handle missing labor hours correctly                  
+║  update(eda): expand departmental workload analysis                   
+║  add(viz): labor distribution by craft type                           
+║  docs(readme): add installation instructions                          
+║  add(features): create maintenance density metrics                    
+║  refactor(cleaning): simplify date parsing logic                      
+║  add(dashboard): interactive PM schedule explorer                     
+║  perf(eda): optimize groupby operations for large dataset             
+║  chore: update environment.yml with plotly                            
+║  style(notebook): improve markdown documentation                      
+╠════════════════════════════════════════════════════════════════════════╣
+║  BAD EXAMPLES (AVOID)                                                  ║
+╠════════════════════════════════════════════════════════════════════════╣
+║  ✗ new analysis                                                        
+║  ✗ fixed it                                                            
+║  ✗ updates                                                             
+║  ✗ WIP                                                                 
+║  ✗ changes to notebook                                                 
+║  ✗ Added new visualization                      (wrong tense)         
+║  ✗ fix: code                                    (not descriptive)     
+╠════════════════════════════════════════════════════════════════════════╣
+║  QUICK TEST                                                            ║
+╠════════════════════════════════════════════════════════════════════════╣
+║  Ask yourself: "If applied, this commit will ___"                     
+║                                                                       
+║  ✓ "add statistical analysis of PM intervals"                         
+║  ✗ "added new notebook"                                               
+╠════════════════════════════════════════════════════════════════════════╣
+║  COMMIT WORKFLOW                                                       ║
+╠════════════════════════════════════════════════════════════════════════╣
+║  1. git status                    # Check what changed                
+║  2. git add [files]               # Stage your changes                
+║  3. git commit -m "type(scope): subject"                              
+║  4. git push origin main          # Push to repository                
+╠════════════════════════════════════════════════════════════════════════╣
+║  PROJECT-SPECIFIC TIPS                                                 ║
+╠════════════════════════════════════════════════════════════════════════╣
+║  • Commit each notebook section/analysis separately                    
+║  • Include data changes when modifying cleaning logic                 
+║  • Reference issue/question numbers when relevant                     
+║  • Keep commits atomic and focused on one change                      
+╚════════════════════════════════════════════════════════════════════════╝
