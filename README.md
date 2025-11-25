@@ -32,18 +32,23 @@ As a maintenance professional working at Honda Manufacturing of Alabama, I selec
 
 
 ### Key Features
- 
+
+#### PM FORECAST
+
 | Feature | Description | Type |
 |---------|-------------|------|
 | `DUE_DATE` | Scheduled completion date for PM activity | Date |
-| `PMNUM` | Unique preventive maintenance identifier | String |
+| `PMNUM` | `foreign key` Unique preventive maintenance identifier | String |
+| `COUNTKEY` | PMNUM concatenated to date for distinct count of occurence | String |
 | `PMDESCRIPTION` | Description of the maintenance task | String |
 | `INTERVAL` | Frequency of maintenance (e.g., 1-MONTHS, 6-MONTHS) | String |
 | `FORECASTJP` | Job plan forecast identifier | String |
 | `JOB_TYPE` | Type of work (REPAIR, INSPECTION, ADJUSTMENT) | Categorical |
 | `LABOR_CRAFT` | Required labor skill/craft | Categorical |
-| `LABORHRS` | Estimated labor hours | Float |
-| `THISMATCOST` | Estimated material cost | Float |
+| `PLANNED_LABOR_HRS` | Estimated labor hours | Float |
+| `TOTAL_MATERIAL_COST` | Estimated material cost | Float |
+| `TASK_COUNT` | Number of tasks in the job plan (meta complexity) | Integer |
+| `TOTAL_TASK_DESC_LENGTH` | Number of characters across all task descriptions | Integer |
 | `PMSCOPETYPE` | Scope type (LOCATION, ASSET) | Categorical |
 | `LOCATION` | Equipment or location identifier | String |
 | `LOCATIONDESC` | Human-readable location description | String |
@@ -54,6 +59,19 @@ As a maintenance professional working at Honda Manufacturing of Alabama, I selec
 | `LINE` | Production line identifier | String |
 | `ZONENAME` | Manufacturing zone name | String |
 | `PROCESSNAME` | Process area name | String |
+
+#### PM PERFORMANCE (Previous full fiscal year 2024-2025)
+
+| Feature | Description | Type |
+|---------|-------------|------|
+| `PMNUM` | `primary key` Unique preventive maintenance identifier | String |
+| `TIMES_SCHEDULED` | Number of times this PM came out | Integer |
+| `TIMES_ONTIME` | Number of times the work was done on time | Integer |
+| `TIMES_LATE` | Number of times the work was late | Integer |
+| `TIMES_NOT_COMPLETED` | Number of times the work was not done at all | Integer |
+| `AVG_PLANNED_HOURS` | Average of planned labor hours for the year | Float |
+| `AVG_ACTUAL_HOURS` | Average of actual labor hours for the year | Float |
+
 
 ---
 
@@ -79,26 +97,26 @@ This analysis is driven by practical questions that impact maintenance operation
 ## Project Structure
 
 ```
-py4eda/
+py4eda-project/
 │
-├── README.md                          # This file
+├── README.md                                     # This file
 ├── data/
-│   └── 103ki_aap_pm_forecast_limit10020251118.csv
+│   └── 103ki_pm_forecast.csv                     
+│   └── 101ki_pm_performance.csv                  
 │
-├── notebooks/ **[DRAFT]**
-│   ├── 01_data_loading_reconnaissance.ipynb
-│   ├── 02_data_quality_assessment.ipynb
-│   ├── 03_cleaning_and_transformation.ipynb
-│   ├── 04_statistical_eda.ipynb
-│   └── 05_feature_engineering_insights.ipynb
+├── notebooks/
+│   ├── 00_data-info_and_loader-template.ipynb    #Target Readiness 11/27 12 PM - Mike
+│   ├── 02_individual_exploration_abby.ipynb      #Target Completion - 
+│   ├── 03_individual_exploration_mike.ipynb      #Target Completion - 
+│   ├── 04_report.ipynb                           #Target Completion - 
 │
 ├── src/
-│   └── pm_dashboard.py                # Streamlit interactive dashboard
+│   └── pm_dashboard.py                           #Target Completion - 
 │
 ├── outputs/
-│   ├── cleaned_data.csv
-│   └── analysis_summary.md
-│
+│   ├── cleaned_data.csv                          #Likely to have multiple of these
+│   └── intermediate_data.pkl
+│   
 └── requirements.txt
 ```
 
@@ -111,18 +129,18 @@ This project follows the iterative EDA workflow outlined in INSY6500:
 
 - Import data and examine structure
 - Understand feature meanings and relationships
-- Initial data profiling and summary statistics
-- Identify data types and potential issues
+- Initial data profiling and summary statistics 
+- Identify data types and potential issues --> `dt.info()`
 
 ### 2. Data Quality Assessment
-- Missing value analysis
-- Duplicate detection
-- Outlier identification
+- Missing value analysis --> `.isna().sum()`
+- Duplicate detection --> _forecast will have dups, performance should not_
+- Outlier identification 
 - Data type validation
 - Consistency checks across related fields
 
 ### 3. Cleaning Decisions
-- Handle missing values (drop, impute, or flag)
+- Handle missing values (drop, impute, or flag) --> _most numeric values safe to replace with 0_
 - Correct data type mismatches
 - Address outliers and anomalies
 - Standardize categorical values
@@ -193,7 +211,7 @@ cd py4eda-project
 conda env create -f environment.yml
  
 # Activate the environment
-conda activate py4eda
+conda activate insy6500
  ```
 #### Option 2: Using pip
 ```bash
@@ -204,14 +222,14 @@ pip install -r requirements.txt
 ### Run Jupyter Notebooks
 
 ```bash
- jupyter notebook
+ jupyter-lab
 # Navigate to notebooks/ directory
 ```
 
 ### Launch Streamlit Dashboard (Graduate Students)
 
  ```bash
-streamlit run src/pm\_dashboard.py
+streamlit run src/pm_dashboard.py
 ```
 ---
 
@@ -230,8 +248,7 @@ streamlit run src/pm\_dashboard.py
 ## Limitations \& Considerations
 - **Forecast Data:** This is planned maintenance, not actual execution data. Actual work may vary due to production requirements, equipment breakdowns, or resource availability.
 - **Timeframe:** One-year forecast provides a snapshot but may not capture multi-year maintenance strategy cycles or long-interval PMs.
-- **Cost Data:** Material cost field (`THISMATCOST`) is largely unpopulated, limiting cost analysis capabilities.
-- **Confidentiality:** Specific equipment identifiers and some operational details have been retained but should be considered proprietary to Honda Manufacturing.
+- **Cost Data:** Material cost field is largely unpopulated, limiting cost analysis capabilities.
 - **Generalizability:** Findings are specific to this manufacturing facility and may not directly apply to other automotive plants or industries.
 
 ---
@@ -246,7 +263,7 @@ streamlit run src/pm\_dashboard.py
 
 ## Acknowledgments
 - INSY6500 instructional team for project guidance
-- Honda Manufacturing of Alabama M.E.S.D. team for domain expertise
+- Honda Manufacturing of Alabama MESD team for domain expertise
 - Maximo system administrators for data access support
 
 ---
