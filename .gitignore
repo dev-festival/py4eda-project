@@ -1,6 +1,7 @@
 # Jupyter Notebook
 .ipynb_checkpoints/
 */.ipynb_checkpoints/*
+00_data_info_and_loader_template_old.ipynb
 
 # Python
 __pycache__/
