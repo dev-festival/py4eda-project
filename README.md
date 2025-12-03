@@ -87,7 +87,7 @@ I selected these datasets because it represents the complexity of real-world pre
 Two team members, two complete analytical paths. Each person does the full EDA workflow independently. Convergence only if insights naturally connect.
 
 ### Path 1 - Maintenancy Strategy Comparison
-**Owner**: TBD
+**Owner**: Mike Moyer
 
 **Question**: *How do different departments approach preventative maintenance? Does it reveal anything about their operational philosophy?*
 
@@ -95,12 +95,12 @@ Two team members, two complete analytical paths. Each person does the full EDA w
 
 | Phase | Focus | Key Activities | Outputs |
 |-------|-------|----------------|---------|
-| **I: Foundation** | Data prep & feature engineering | • Parse `INTERVAL` into frequency groups<br>• Calculate craft diversity per dept<br>• Create job type mix ratios<br>• Build asset/location preference metrics | Engineered features ready for analysis |
+| **I: Foundation** | Data prep & feature engineering | • Parse `INTERVAL` into frequency groups<br>• Calculate Job Complexity<br>• Create job type mix ratios<br>• Build asset/location preference metrics | Engineered features ready for analysis |
 | **II: Exploration** | Answer 3 research questions | **Q1:** Department "maintenance personalities"<br>• Job type distributions<br>• Interval strategies<br>• Craft utilization patterns<br><br>**Q2:** Asset treatment across departments<br>• Compare intervals for similar equipment<br>• Identify departmental culture differences<br><br>**Q3:** Craft specialization patterns<br>• Department-specific vs shared crafts<br>• Workload concentration analysis | • Department comparison tables<br>• Craft heatmaps<br>• Strategy visualizations<br>• Standalone insights |
 | **III: Optional** | Performance context | Merge with performance data to see if strategies correlate with success | Strategy-performance connections |
 
 ### Path 2 - Strategy Execution Analysis
-**Owner**: TBD
+**Owner**: Abby Tucker
 
 **Question**: *Are there any that patterns emerge when we compare the planned maintenance activities to historical execution results?*
 
