@@ -95,9 +95,8 @@ Two team members, two complete analytical paths. Each person does the full EDA w
 
 | Phase | Focus | Key Activities | Outputs |
 |-------|-------|----------------|---------|
-| **I: Foundation** | Data prep & feature engineering | • Parse `INTERVAL` into frequency groups<br>• Calculate Job Complexity<br>• Create job type mix ratios<br>• Build asset/location preference metrics | Engineered features ready for analysis |
-| **II: Exploration** | Answer 3 research questions | **Q1:** Department "maintenance personalities"<br>• Job type distributions<br>• Interval strategies<br>• Craft utilization patterns<br><br>**Q2:** Asset treatment across departments<br>• Compare intervals for similar equipment<br>• Identify departmental culture differences<br><br>**Q3:** Craft specialization patterns<br>• Department-specific vs shared crafts<br>• Workload concentration analysis | • Department comparison tables<br>• Craft heatmaps<br>• Strategy visualizations<br>• Standalone insights |
-| **III: Optional** | Performance context | Merge with performance data to see if strategies correlate with success | Strategy-performance connections |
+| **I: Foundation** | Data prep & feature engineering | • Parse `INTERVAL` into frequency groups<br>• Calculate Job Complexity<br>• Overall Summary Statistics | Engineer features - Set Baseline for Department Profiles |
+| **II: Exploration** | Answer 3 research questions | **Q1:** Department "maintenance personalities"<br>• Job type distributions<br>• Interval strategies<br>• Craft utilization patterns<br> | • Department Comparison<br>• Strategy visualizations<br>• Standalone insights |
 
 ### Path 2 - Strategy Execution Analysis
 **Owner**: Abby Tucker
@@ -109,7 +108,7 @@ Two team members, two complete analytical paths. Each person does the full EDA w
 | Phase | Focus | Key Activities | Outputs |
 |-------|-------|----------------|---------|
 | **I: Foundation** | Join datasets & feature engineering | • Merge forecast + performance on `PMNUM`<br>• Calculate reliability metrics (on-time rate, completion rate)<br>• Build planning accuracy metrics (deviation %)<br>• Create complexity indicators (task density, complexity score) | Merged dataset with performance metrics |
-| **II: Exploration** | Answer 3 research questions | **Q1:** How well do plans match reality?<br>• Planned vs actual hour distributions<br>• Planning bias patterns<br>• Accuracy by interval/job type/craft<br><br>**Q2:** Where are our planning blind spots<br>• Compare high vs low completion characteristics<br>• Cross-tabulate by job type, craft, dept<br><br>**Q3:** When and why do PMs fail?<br>• Examine high incompletion PMNUMs<br>• Compare completed vs incomplete characteristics<br>• Department completion discipline | • Planning accuracy visualizations<br>• Problem PM identification<br>• Standalone insights |
+| **II: Exploration** | Answer Research question | **Q1:** How well do plans match reality?<br>• Planned vs actual hour distributions<br>• Planning bias patterns<br>• Accuracy by interval/job type/craft<br><br>**Q2:** Where are our planning blind spots<br>• Compare high vs low completion characteristics<br>• Cross-tabulate by job type, craft, dept<br><br>**Q3:** When and why do PMs fail?<br>• Examine high incompletion PMNUMs<br>• Compare completed vs incomplete characteristics<br>• Department completion discipline | • Planning accuracy visualizations<br>• Problem PM identification<br>• Standalone insights |
 | **III: Optional** | Temporal patterns | Map forecast dates to find scheduling hot spots or seasonal patterns | Workload timing insights |
 
 
@@ -117,7 +116,7 @@ Two team members, two complete analytical paths. Each person does the full EDA w
 
 | Path | Key Features Created |
 |------|---------------------|
-| **Path 1** | • Interval frequency groups (Daily/Weekly/Monthly/etc.)<br>• Craft diversity index per department<br>• Job type mix ratios (REPAIR/INSPECTION/ADJUSTMENT %)<br>• Asset vs Location preference ratio<br>• Workload metrics (total hours, PM count, avg per PM) |
+| **Path 1** | • Interval frequency groups (Daily/Weekly/Monthly/etc.)<br>• Job Complexity Metrics<br>• Job type mix ratios (REPAIR/INSPECTION/ADJUSTMENT %)<br>• Asset vs Location preference ratio<br>• Workload metrics (total hours, PM count, avg per PM) |
 | **Path 2** | • `on_time_rate = TIMES_ONTIME / TIMES_SCHEDULED`<br>• `completion_rate = (SCHEDULED - NOT_COMPLETED) / SCHEDULED`<br>• `hour_deviation_pct = (ACTUAL - PLANNED) / PLANNED`<br>• Task density, complexity scores<br>• Performance tier segmentation (high/medium/low) |
 
 #### Research Questions Quick Reference
@@ -125,8 +124,6 @@ Two team members, two complete analytical paths. Each person does the full EDA w
 | Path | Question | Analysis Type | Complexity |
 |------|----------|---------------|------------|
 | **Path 1** | What are department "maintenance personalities"? | Univariate + bivariate distributions | Medium |
-| **Path 1** | Do similar assets get treated differently? | Cross-departmental comparison | Medium |
-| **Path 1** | Is there craft specialization? | Multivariate grouping & heatmaps | Medium-High |
 | **Path 2** | How well do plans match reality? | Bivariate relationship + segmentation | Medium |
 | **Path 2** | What do high completion PMs have in common? | Comparative group analysis | Medium-High |
 | **Path 2** | When and why do PMs fail to meet the plan? | Pattern discovery + cross-tabulation | Medium-High |
