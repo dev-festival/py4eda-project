@@ -171,7 +171,7 @@ elif page == "Department Deep Dive":
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
-        dept_hours = dept_data['PLANNED_LABOR_HRS'].sum()
+        dept_hours = dept_data['total_labor_hrs'].sum()
         st.metric("Total Hours", f"{dept_hours:,.0f}")
     
     with col2:
@@ -192,7 +192,7 @@ elif page == "Department Deep Dive":
     
     st.markdown("---")
     
-    # MONTHLY FORECAST WITH CRAFT BREAKDOWN
+    # MONTHLY FORECAST WITH CRAFT BREAKDOWN =========================================================
     st.subheader("📅 Monthly Labor Hours by Craft")
     
     # Craft filter
@@ -201,15 +201,15 @@ elif page == "Department Deep Dive":
     
     filtered_dept_data = dept_data[dept_data['LABOR_CRAFT'].isin(selected_crafts)]
     
-    monthly_craft = filtered_dept_data.groupby(['MONTH', 'LABOR_CRAFT'])['PLANNED_LABOR_HRS'].sum().reset_index()
+    monthly_craft = filtered_dept_data.groupby(['MONTH', 'LABOR_CRAFT'])['total_labor_hrs'].sum().reset_index()
     monthly_craft = monthly_craft.sort_values('MONTH')
     
     fig1 = px.area(monthly_craft,
                    x='MONTH',
-                   y='PLANNED_LABOR_HRS',
+                   y='total_labor_hrs',
                    color='LABOR_CRAFT',
                    title=f"{selected_dept} - Monthly Labor Hours by Craft",
-                   labels={'PLANNED_LABOR_HRS': 'Planned Hours', 'MONTH': 'Month'},
+                   labels={'total_labor_hours': 'Planned Hours', 'MONTH': 'Month'},
                    height=400)
     
     fig1.update_layout(
@@ -218,7 +218,126 @@ elif page == "Department Deep Dive":
         #hovermode='x unified'  # Nice hover effect that shows all crafts at once
     )
     st.plotly_chart(fig1, use_container_width=True)
+
+    # COLLAPSIBLE DETAIL DATA
+    if st.checkbox("📋 View detailed data", key="monthly_craft_detail"):
+        st.markdown("#### Detailed Monthly Data")
+        
+        # Month filter for detail view
+        all_months_option = ['All Months'] + sorted(filtered_dept_data['MONTH'].unique().tolist())
+        selected_month_detail = st.selectbox("Filter by Month", all_months_option, key="month_detail_filter")
+        
+        # Filter data based on selection
+        if selected_month_detail == 'All Months':
+            detail_data = filtered_dept_data.copy()
+        else:
+            detail_data = filtered_dept_data[filtered_dept_data['MONTH'] == selected_month_detail].copy()
+        
+        # Show preview
+        st.markdown(f"**Showing {len(detail_data)} records**")
+        st.dataframe(detail_data, use_container_width=True, height=400)
+
+    st.markdown("---")
     
+    # ZONE/LINE ANALYSIS (switches based on department) =========================================================
+    st.subheader("📍 Zone/Line Analysis")
+    
+    # Determine if this department uses LINE or ZONENAME
+    # Check which has more non-null values for this department
+    line_count = dept_data['LINE'].notna().sum()
+    zone_count = dept_data['ZONENAME'].notna().sum()
+    
+    use_line = line_count > zone_count or selected_dept == 'MACHINING'
+    location_type = 'LINE' if use_line else 'ZONENAME'
+    location_col = 'LINE' if use_line else 'ZONENAME'
+    
+    st.info(f"**{selected_dept}** uses **{location_type}** for location tracking")
+    
+    # Filter out null values
+    zone_data = filtered_dept_data[filtered_dept_data[location_col].notna()].copy()
+
+    
+    if len(zone_data) == 0:
+        st.warning(f"No {location_type} data available for this department")
+    else:
+        # Aggregate by zone/line
+        zone_summary = zone_data.groupby(location_col).agg({
+            'PMNUM': 'nunique',  # Total unique PMs
+            'COUNTKEY': 'count',  # Total PM occurrences
+            'PLANNED_LABOR_HRS': 'sum',
+            'total_labor_hrs': 'sum'
+        }).reset_index()
+        
+        zone_summary.columns = [location_type, 'Unique PMs', 'Total Occurrences', 
+                                'Planned Labor Hrs', 'Total Labor Hrs']
+
+        # FILTER OUT ZEROS
+        zone_summary = zone_summary[
+            (zone_summary['Planned Labor Hrs'] > 0) | 
+            (zone_summary['Total Labor Hrs'] > 0)
+        ]
+        
+        # Visualization choice
+        viz_type = st.radio("Select Visualization", 
+                           ["Heatmap - Labor Hours", "Scatter - Occurrences vs Hours"],
+                           horizontal=True)
+        
+        if viz_type == "Heatmap - Labor Hours":
+            # Heatmap showing both planned and total labor hours
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fig1 = px.bar(zone_summary,
+                             x=location_type,
+                             y='Planned Labor Hrs',
+                             title=f"Planned Labor Hours by {location_type}",
+                             color='Planned Labor Hrs',
+                             color_continuous_scale='Blues',
+                             labels={'Planned Labor Hrs': 'Hours'})
+                fig1.update_layout(xaxis_tickangle=-45)
+                st.plotly_chart(fig1, use_container_width=True)
+            
+            with col2:
+                fig2 = px.bar(zone_summary,
+                             x=location_type,
+                             y='Total Labor Hrs',
+                             title=f"Total Labor Hours by {location_type}",
+                             color='Total Labor Hrs',
+                             color_continuous_scale='Reds',
+                             labels={'Total Labor Hrs': 'Hours'})
+                fig2.update_layout(xaxis_tickangle=-45)
+                st.plotly_chart(fig2, use_container_width=True)
+        
+        else:  # Scatter plot
+            fig3 = px.scatter(zone_summary,
+                             x='Total Occurrences',
+                             y='Total Labor Hrs',
+                             size='Unique PMs',
+                             color='Planned Labor Hrs',
+                             hover_name=location_type,
+                             title=f"{location_type} Workload Analysis (bubble size = unique PMs)",
+                             labels={'Total Occurrences': 'PM Occurrences',
+                                    'Total Labor Hrs': 'Total Labor Hours'},
+                             color_continuous_scale='Viridis',
+                             height=500)
+            
+            # Add zone/line labels to points
+            fig3.update_traces(textposition='top center')
+            
+            st.plotly_chart(fig3, use_container_width=True)
+        
+        st.markdown("---")
+        
+        # Summary table
+        st.subheader(f"📊 {location_type} Summary Table")
+        
+        zone_summary_display = zone_summary.copy()
+        zone_summary_display['Planned Labor Hrs'] = zone_summary_display['Planned Labor Hrs'].apply(lambda x: f"{x:,.0f}")
+        zone_summary_display['Total Labor Hrs'] = zone_summary_display['Total Labor Hrs'].apply(lambda x: f"{x:,.0f}")
+        zone_summary_display = zone_summary_display.sort_values('Total Occurrences', ascending=False)
+        
+        st.dataframe(zone_summary_display, use_container_width=True, hide_index=True)
+
     st.markdown("---")
     
     # ROW 2: JOB TYPE MIX & COMPLEXITY DISTRIBUTION
@@ -261,7 +380,7 @@ elif page == "Department Deep Dive":
     
     st.markdown("---")
     
-    # TOP 10 MOST COMPLEX PMs
+    # TOP 10 MOST COMPLEX PMs =========================================================
     st.subheader("🎯 Top 10 Most Complex PMs")
     
     # Aggregate to unique PMs (since same PM can appear multiple times for different crafts/dates)
@@ -282,8 +401,150 @@ elif page == "Department Deep Dive":
     
     st.dataframe(top_complex, use_container_width=True, hide_index=True)
     
+
+    st.markdown("---")
+    
+    # INTERVAL FREQUENCY ANALYSIS ===============================================================
+    st.subheader("⏰ Maintenance Interval Deep Dive")
+    
+    # Key insight callout about daily complexity
+    st.info("💡 **Insight**: Daily PMs often show higher complexity scores due to extensive task lists despite lower individual time commitments.")
+    
+    # INTERVAL VS COMPLEXITY
+    st.markdown("#### Interval Complexity Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Complexity by interval
+        interval_complexity = filtered_dept_data.groupby('interval_category').agg({
+            'complexity_score': 'mean',
+            'PMNUM': 'nunique',
+            'PLANNED_LABOR_HRS': 'sum'
+        }).reset_index()
+        interval_complexity.columns = ['Interval', 'Avg Complexity', 'PM Count', 'Total Hours']
+        interval_complexity = interval_complexity.sort_values('Avg Complexity', ascending=False)
+        
+        fig1 = px.bar(interval_complexity,
+                      x='Interval',
+                      y='Avg Complexity',
+                      title=f"{selected_dept} - Average Complexity by Interval",
+                      color='Avg Complexity',
+                      color_continuous_scale='Reds',
+                      text='Avg Complexity')
+        
+        fig1.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+        fig1.update_layout(xaxis_tickangle=-45)
+        st.plotly_chart(fig1, use_container_width=True)
+    
+    with col2:
+        # Hours per PM by interval
+        interval_complexity['Hours per PM'] = interval_complexity['Total Hours'] / interval_complexity['PM Count']
+        
+        fig2 = px.bar(interval_complexity,
+                      x='Interval',
+                      y='Hours per PM',
+                      title=f"{selected_dept} - Labor Hours per PM by Interval",
+                      color='Hours per PM',
+                      color_continuous_scale='Blues',
+                      text='Hours per PM')
+        
+        fig2.update_traces(texttemplate='%{text:.1f}', textposition='outside')
+        fig2.update_layout(xaxis_tickangle=-45)
+        st.plotly_chart(fig2, use_container_width=True)
     
     st.markdown("---")
+    
+    # MONTHLY INTERVAL STACKING - LABOR HOURS
+    st.markdown("#### Monthly Labor Bottleneck Analysis")
+    st.markdown("*How do different interval types stack up month-to-month?*")
+    
+    # Toggle between labor hours and laborers
+    metric_choice = st.radio("View by:", 
+                             ["Total Labor Hours", "Total Laborers Required"],
+                             horizontal=True,
+                             key="interval_metric")
+    
+    if metric_choice == "Total Labor Hours":
+        metric_col = 'PLANNED_LABOR_HRS'
+        y_label = 'Planned Labor Hours'
+    else:
+        metric_col = 'PLANNED_LABORERS'
+        y_label = 'Planned Laborers'
+    
+    # Aggregate by month and interval
+    monthly_interval = filtered_dept_data.groupby(['MONTH', 'interval_category'])[metric_col].sum().reset_index()
+    monthly_interval = monthly_interval.sort_values('MONTH')
+    
+    fig3 = px.bar(monthly_interval,
+                  x='MONTH',
+                  y=metric_col,
+                  color='interval_category',
+                  title=f"{selected_dept} - Monthly {metric_choice} by Interval Type",
+                  labels={metric_col: y_label, 'interval_category': 'Interval'},
+                  barmode='stack',
+                  height=500)
+    
+    fig3.update_layout(
+        xaxis_tickangle=-45,
+        legend_title_text='Interval Type',
+        hovermode='x unified'
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # BOTTLENECK IDENTIFICATION
+    st.markdown("#### 🚨 Potential Bottleneck Months")
+    
+    # Find months with highest workload by interval type
+    monthly_totals = filtered_dept_data.groupby('MONTH').agg({
+        'PLANNED_LABOR_HRS': 'sum',
+        'PLANNED_LABORERS': 'sum',
+        'PMNUM': 'nunique'
+    }).reset_index()
+    monthly_totals.columns = ['Month', 'Total Hours', 'Total Laborers', 'PM Count']
+    monthly_totals = monthly_totals.sort_values('Total Hours', ascending=False)
+    
+    # Top 3 bottleneck months
+    col1, col2, col3 = st.columns(3)
+    
+    for idx, (i, row) in enumerate(monthly_totals.head(3).iterrows()):
+        with [col1, col2, col3][idx]:
+            st.metric(
+                label=f"#{idx+1}: {row['Month']}",
+                value=f"{row['Total Hours']:,.0f} hrs",
+                delta=f"{row['Total Laborers']:.0f} laborers | {row['PM Count']} PMs"
+            )
+    
+    st.markdown("---")
+    
+    # INTERVAL MIX TABLE
+    st.markdown("#### 📊 Interval Breakdown Table")
+    
+    interval_summary = filtered_dept_data.groupby('interval_category').agg({
+        'PMNUM': 'nunique',
+        'COUNTKEY': 'count',
+        'PLANNED_LABOR_HRS': 'sum',
+        'PLANNED_LABORERS': 'sum',
+        'complexity_score': 'mean',
+        'TASK_COUNT': 'mean'
+    }).reset_index()
+    
+    interval_summary.columns = ['Interval', 'Unique PMs', 'Total Occurrences', 
+                                'Total Hours', 'Total Laborers', 'Avg Complexity', 'Avg Tasks']
+    interval_summary['Hours per PM'] = interval_summary['Total Hours'] / interval_summary['Unique PMs']
+    interval_summary = interval_summary.sort_values('Total Hours', ascending=False)
+    
+    # Format for display
+    interval_summary_display = interval_summary.copy()
+    interval_summary_display['Total Hours'] = interval_summary_display['Total Hours'].apply(lambda x: f"{x:,.0f}")
+    interval_summary_display['Total Laborers'] = interval_summary_display['Total Laborers'].apply(lambda x: f"{x:,.0f}")
+    interval_summary_display['Hours per PM'] = interval_summary_display['Hours per PM'].apply(lambda x: f"{x:.1f}")
+    interval_summary_display['Avg Complexity'] = interval_summary_display['Avg Complexity'].apply(lambda x: f"{x:.2f}")
+    interval_summary_display['Avg Tasks'] = interval_summary_display['Avg Tasks'].apply(lambda x: f"{x:.1f}")
+    
+    st.dataframe(interval_summary_display, use_container_width=True, hide_index=True)
     
     # INTERVAL BREAKDOWN
     st.subheader("⏰ Maintenance Interval Breakdown")
