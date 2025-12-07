@@ -274,7 +274,7 @@ elif page == "Department Deep Dive":
     }).nlargest(10, 'complexity_score').reset_index()
     
     top_complex.columns = ['PM Number', 'Description', 'Complexity Score', 
-                           'Total Planned Hours', 'Task Count', 'Job Type', 'Crafts']
+                           'Total Planned Hours', 'Task Count', 'Job Type']
     
     # Format for display
     top_complex['Complexity Score'] = top_complex['Complexity Score'].apply(lambda x: f"{x:.2f}")
