@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import numpy as np
 from pathlib import Path
 
 # Page config
@@ -190,6 +191,27 @@ elif page == "Department Deep Dive":
         avg_hrs_per_pm = dept_hours / dept_pms if dept_pms > 0 else 0
         st.metric("Avg Hrs/PM", f"{avg_hrs_per_pm:.1f}")
     
+    # HELPER FUNCTION - Clean dataset for user output
+    def get_clean_output(df):
+        """Returns a clean dataframe for user download/viewing"""
+        # Select columns (exclude internal calculations)
+        output_columns = [col for col in df.columns if col not in [
+            'complexity_score', 'task_norm', 'hours_norm', 'desc_norm', 
+            'MONTH_DATE', 'total_labor_per_occ_capped'
+        ]]
+        
+        clean_df = df[output_columns].copy()
+        
+        # Rename columns for clarity
+        clean_df = clean_df.rename(columns={
+            'task_density': 'tasks_per_hour'
+        })
+
+        clean_df = clean_df.set_index('PMNUM')
+        
+        return clean_df
+
+
     st.markdown("---")
     
     # MONTHLY FORECAST WITH CRAFT BREAKDOWN =========================================================
@@ -233,9 +255,12 @@ elif page == "Department Deep Dive":
         else:
             detail_data = filtered_dept_data[filtered_dept_data['MONTH'] == selected_month_detail].copy()
         
+        # Apply clean output function
+        detail_data_clean = get_clean_output(detail_data)
+        
         # Show preview
-        st.markdown(f"**Showing {len(detail_data)} records**")
-        st.dataframe(detail_data, use_container_width=True, height=400)
+        st.markdown(f"**Showing {len(detail_data_clean)} records**")
+        st.dataframe(detail_data_clean, use_container_width=True, height=400)
 
     st.markdown("---")
     
@@ -289,24 +314,40 @@ elif page == "Department Deep Dive":
             with col1:
                 fig1 = px.bar(zone_summary,
                              x=location_type,
-                             y='Planned Labor Hrs',
-                             title=f"Planned Labor Hours by {location_type}",
-                             color='Planned Labor Hrs',
+                             y='Total Labor Hrs',
+                             title=f"Total Labor Hours by {location_type}",
+                             color='Total Labor Hrs',
                              color_continuous_scale='Blues',
-                             labels={'Planned Labor Hrs': 'Hours'})
+                             labels={'Total Labor Hrs': 'Hours'})
                 fig1.update_layout(xaxis_tickangle=-45)
                 st.plotly_chart(fig1, use_container_width=True)
             
             with col2:
-                fig2 = px.bar(zone_summary,
-                             x=location_type,
-                             y='Total Labor Hrs',
-                             title=f"Total Labor Hours by {location_type}",
-                             color='Total Labor Hrs',
-                             color_continuous_scale='Reds',
-                             labels={'Total Labor Hrs': 'Hours'})
-                fig2.update_layout(xaxis_tickangle=-45)
-                st.plotly_chart(fig2, use_container_width=True)
+                # Zone Interval Mix
+                zone_interval = zone_data.groupby([location_col, 'interval_category'])['total_labor_hrs'].sum().reset_index()
+                
+                # Filter out zeros
+                zone_interval = zone_interval[zone_interval['total_labor_hrs'] > 0]
+                
+                if zone_interval.empty:
+                    st.warning("No interval data available")
+                else:
+                    fig2 = px.bar(zone_interval,
+                                 x=location_col,
+                                 y='total_labor_hrs',
+                                 color='interval_category',
+                                 title=f"{location_type} Workload by Interval Type",
+                                 labels={'total_labor_hrs': 'Total Labor Hours', 
+                                        'interval_category': 'Interval'},
+                                 barmode='stack',
+                                 color_discrete_sequence=px.colors.qualitative.Set2)
+                    
+                    fig2.update_layout(
+                        xaxis_tickangle=-45,
+                        legend_title_text='Interval Type',
+                        height=450
+                    )
+                    st.plotly_chart(fig2, use_container_width=True)
         
         else:  # Scatter plot
             fig3 = px.scatter(zone_summary,
@@ -323,13 +364,44 @@ elif page == "Department Deep Dive":
             
             # Add zone/line labels to points
             fig3.update_traces(textposition='top center')
-            
             st.plotly_chart(fig3, use_container_width=True)
         
+        # COLLAPSIBLE ZONE DETAIL DATA
+        if st.checkbox("📋 View zone detailed data", key="zone_detail"):
+            st.markdown("#### Zone/Line Detailed Data")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Zone/Line filter
+                all_zones_option = ['All'] + sorted(zone_data[location_col].dropna().unique().tolist())
+                selected_zone_filter = st.selectbox(f"Filter by {location_type}", all_zones_option, key="zone_filter")
+            
+            with col2:
+                # Interval filter
+                all_intervals_option = ['All Intervals'] + sorted(zone_data['interval_category'].dropna().unique().tolist())
+                selected_interval_filter = st.selectbox("Filter by Interval", all_intervals_option, key="interval_filter")
+            
+            # Apply filters
+            zone_detail_data = zone_data.copy()
+            
+            if selected_zone_filter != 'All':
+                zone_detail_data = zone_detail_data[zone_detail_data[location_col] == selected_zone_filter]
+            
+            if selected_interval_filter != 'All Intervals':
+                zone_detail_data = zone_detail_data[zone_detail_data['interval_category'] == selected_interval_filter]
+            
+            # Apply clean output function
+            zone_detail_clean = get_clean_output(zone_detail_data)
+            
+            # Show preview
+            st.markdown(f"**Showing {len(zone_detail_clean)} records**")
+            st.dataframe(zone_detail_clean, use_container_width=True, height=400)
+
         st.markdown("---")
         
         # Summary table
-        st.subheader(f"📊 {location_type} Summary Table")
+        st.subheader(f"📊 Zone/Line Summary Table")
         
         zone_summary_display = zone_summary.copy()
         zone_summary_display['Planned Labor Hrs'] = zone_summary_display['Planned Labor Hrs'].apply(lambda x: f"{x:,.0f}")
@@ -340,12 +412,96 @@ elif page == "Department Deep Dive":
 
     st.markdown("---")
     
+   
+    # COMPLEXITY FACTOR DISTRIBUTION (KDE)
+    st.subheader("📈 Complexity Factor Distributions")
+    st.markdown("*Kernel Density Estimation of the three components that make up the complexity score*")
+
+    # COMPLEXITY LEVEL FILTER
+    complexity_options = ['All Levels'] + sorted(dept_data['complexity_level'].dropna().unique().tolist())
+    selected_complexity_filter = st.selectbox("Filter by Complexity Level", complexity_options, key="complexity_filter")
+
+    # Apply complexity filter
+    if selected_complexity_filter == 'All Levels':
+        complexity_filtered_data = filtered_dept_data.copy()
+    else:
+        complexity_filtered_data = filtered_dept_data[filtered_dept_data['complexity_level'] == selected_complexity_filter]
+    
+    # Create KDE line plots
+    fig_kde = go.Figure()
+    
+    # Task norm KDE
+    from scipy.stats import gaussian_kde
+    
+    # Task norm
+    task_kde = gaussian_kde(complexity_filtered_data['task_norm'].dropna())
+    task_x = np.linspace(0, 1, 200)
+    task_y = task_kde(task_x)
+    
+    fig_kde.add_trace(go.Scatter(
+        x=task_x,
+        y=task_y,
+        name='Task Count (normalized)',
+        mode='lines',
+        line=dict(color='#81f2e9', width=2),
+        fill='tozeroy',
+        fillcolor='rgba(129, 242, 233, 0.2)'
+    ))
+    
+    # Hours norm
+    hours_kde = gaussian_kde(complexity_filtered_data['hours_norm'].dropna())
+    hours_x = np.linspace(0, 1, 200)
+    hours_y = hours_kde(hours_x)
+    
+    fig_kde.add_trace(go.Scatter(
+        x=hours_x,
+        y=hours_y,
+        name='Labor Hours (normalized)',
+        mode='lines',
+        line=dict(color='#fcd107', width=2),
+        fill='tozeroy',
+        fillcolor='rgba(252, 209, 7, 0.2)'
+    ))
+    
+    # Description norm
+    desc_kde = gaussian_kde(complexity_filtered_data['desc_norm'].dropna())
+    desc_x = np.linspace(0, 1, 200)
+    desc_y = desc_kde(desc_x)
+    
+    fig_kde.add_trace(go.Scatter(
+        x=desc_x,
+        y=desc_y,
+        name='Description Length (normalized)',
+        mode='lines',
+        line=dict(color='#32f58a', width=2),
+        fill='tozeroy',
+        fillcolor='rgba(49, 246, 138, 0.2)'
+    ))
+    
+    fig_kde.update_layout(
+        title=f"{selected_dept} - Distribution of Normalized Complexity Components",
+        xaxis_title="Normalized Value (0-1)",
+        yaxis_title="Density",
+        height=350,  # Shorter height
+        #hovermode='x unified',
+        showlegend=True,
+        legend=dict(
+            orientation="h",  # Horizontal legend
+            yanchor="bottom",
+            y=1.02,  # Position above the chart
+            xanchor="center",
+            x=0.5
+        )
+    )
+    
+    st.plotly_chart(fig_kde, use_container_width=True)
+    
     # ROW 2: JOB TYPE MIX & COMPLEXITY DISTRIBUTION
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("🔧 Job Type Mix")
-        job_type_dist = dept_data['JOB_TYPE'].value_counts().reset_index()
+        job_type_dist = complexity_filtered_data['JOB_TYPE'].value_counts().reset_index()
         job_type_dist.columns = ['Job Type', 'Count']
         
         fig2 = px.pie(job_type_dist,
@@ -357,7 +513,7 @@ elif page == "Department Deep Dive":
     
     with col2:
         st.subheader("📊 Complexity Distribution")
-        complexity_dist = dept_data['complexity_level'].value_counts().reset_index()
+        complexity_dist = complexity_filtered_data['complexity_level'].value_counts().reset_index()
         complexity_dist.columns = ['Complexity Level', 'Count']
         
         # Order by complexity
@@ -378,37 +534,21 @@ elif page == "Department Deep Dive":
                                          'High': '#FFA500', 'Very High': '#FF6347'})
         st.plotly_chart(fig3, use_container_width=True)
     
-    st.markdown("---")
-    
-    # TOP 10 MOST COMPLEX PMs =========================================================
-    st.subheader("🎯 Top 10 Most Complex PMs")
-    
-    # Aggregate to unique PMs (since same PM can appear multiple times for different crafts/dates)
-    top_complex = dept_data.groupby('PMNUM').agg({
-        'PMDESCRIPTION': 'first',
-        'complexity_score': 'mean',
-        'PLANNED_LABOR_HRS': 'sum',
-        'TASK_COUNT': 'first',
-        'JOB_TYPE': 'first'
-    }).nlargest(10, 'complexity_score').reset_index()
-    
-    top_complex.columns = ['PM Number', 'Description', 'Complexity Score', 
-                           'Total Planned Hours', 'Task Count', 'Job Type']
-    
-    # Format for display
-    top_complex['Complexity Score'] = top_complex['Complexity Score'].apply(lambda x: f"{x:.2f}")
-    top_complex['Total Planned Hours'] = top_complex['Total Planned Hours'].apply(lambda x: f"{x:.1f}")
-    
-    st.dataframe(top_complex, use_container_width=True, hide_index=True)
-    
+    # COLLAPSIBLE COMPLEXITY DETAIL DATA
+    if st.checkbox("📋 View complexity detailed data", key="complexity_detail"):
+        st.markdown("#### Complexity Detailed Data")
+        
+        # Apply clean output function
+        complexity_detail_clean = get_clean_output(complexity_filtered_data)
+        
+        # Show preview
+        st.markdown(f"**Showing {len(complexity_detail_clean)} records** (filtered by: {selected_complexity_filter})")
+        st.dataframe(complexity_detail_clean, use_container_width=True, height=400)
 
     st.markdown("---")
     
     # INTERVAL FREQUENCY ANALYSIS ===============================================================
     st.subheader("⏰ Maintenance Interval Deep Dive")
-    
-    # Key insight callout about daily complexity
-    st.info("💡 **Insight**: Daily PMs often show higher complexity scores due to extensive task lists despite lower individual time commitments.")
     
     # INTERVAL VS COMPLEXITY
     st.markdown("#### Interval Complexity Analysis")
@@ -461,13 +601,13 @@ elif page == "Department Deep Dive":
     
     # Toggle between labor hours and laborers
     metric_choice = st.radio("View by:", 
-                             ["Total Labor Hours", "Total Laborers Required"],
+                             ["Total Labor Hours", "Labor Assignments"],
                              horizontal=True,
                              key="interval_metric")
     
     if metric_choice == "Total Labor Hours":
         metric_col = 'PLANNED_LABOR_HRS'
-        y_label = 'Planned Labor Hours'
+        y_label = 'Labor Assignments'
     else:
         metric_col = 'PLANNED_LABORERS'
         y_label = 'Planned Laborers'
@@ -503,7 +643,7 @@ elif page == "Department Deep Dive":
         'PLANNED_LABORERS': 'sum',
         'PMNUM': 'nunique'
     }).reset_index()
-    monthly_totals.columns = ['Month', 'Total Hours', 'Total Laborers', 'PM Count']
+    monthly_totals.columns = ['Month', 'Total Hours', 'Labor Assignments', 'PM Count']
     monthly_totals = monthly_totals.sort_values('Total Hours', ascending=False)
     
     # Top 3 bottleneck months
@@ -514,7 +654,7 @@ elif page == "Department Deep Dive":
             st.metric(
                 label=f"#{idx+1}: {row['Month']}",
                 value=f"{row['Total Hours']:,.0f} hrs",
-                delta=f"{row['Total Laborers']:.0f} laborers | {row['PM Count']} PMs"
+                delta=f"{row['Labor Assignments']:.0f} assignments | {row['PM Count']} PMs"
             )
     
     st.markdown("---")
@@ -532,14 +672,14 @@ elif page == "Department Deep Dive":
     }).reset_index()
     
     interval_summary.columns = ['Interval', 'Unique PMs', 'Total Occurrences', 
-                                'Total Hours', 'Total Laborers', 'Avg Complexity', 'Avg Tasks']
+                                'Total Hours', 'Labor Assignments', 'Avg Complexity', 'Avg Tasks']
     interval_summary['Hours per PM'] = interval_summary['Total Hours'] / interval_summary['Unique PMs']
     interval_summary = interval_summary.sort_values('Total Hours', ascending=False)
     
     # Format for display
     interval_summary_display = interval_summary.copy()
     interval_summary_display['Total Hours'] = interval_summary_display['Total Hours'].apply(lambda x: f"{x:,.0f}")
-    interval_summary_display['Total Laborers'] = interval_summary_display['Total Laborers'].apply(lambda x: f"{x:,.0f}")
+    interval_summary_display['Labor Assignments'] = interval_summary_display['Labor Assignments'].apply(lambda x: f"{x:,.0f}")
     interval_summary_display['Hours per PM'] = interval_summary_display['Hours per PM'].apply(lambda x: f"{x:.1f}")
     interval_summary_display['Avg Complexity'] = interval_summary_display['Avg Complexity'].apply(lambda x: f"{x:.2f}")
     interval_summary_display['Avg Tasks'] = interval_summary_display['Avg Tasks'].apply(lambda x: f"{x:.1f}")
