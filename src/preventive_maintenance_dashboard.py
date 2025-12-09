@@ -15,17 +15,23 @@ OUTPUT_DIR = Path(__file__).parent.parent / 'outputs'
 # Load data (cached so it only loads once)
 @st.cache_data
 def load_data():
+    # Forecast/ planning datase 
     df = pd.read_pickle(OUTPUT_DIR / 'data_clean_forecast.pkl')
     df['MONTH'] = df['DUE_DATE'].dt.to_period('M').astype(str)
-    df['MONTH_DATE'] = df['DUE_DATE'].dt.to_period('M').dt.to_timestamp()  # For better sorting
-    return df
+    df['MONTH_DATE'] = df['DUE_DATE'].dt.to_period('M').dt.to_timestamp()
 
-forecast = load_data()
+    # merged dataset 
+    path2 = pd.read_pickle(OUTPUT_DIR / 'Path2_analysis.pkl')
+    
+    # For better sorting
+    return df, path2
+
+forecast, path2 = load_data()
 
 # Sidebar for page navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Select Dashboard", 
-                        ["Executive Overview", "Department Deep Dive", "Workload Calendar", "Operational Insights"])
+                        ["Executive Overview", "Department Deep Dive", "Workload Calendar", "Operational Insights", "Plan vs Execution"])
 
 # =============================================================================
 # PAGE 1: EXECUTIVE OVERVIEW
@@ -1045,3 +1051,314 @@ elif page == "Operational Insights":
     job_type_table['Avg Complexity'] = job_type_table['Avg Complexity'].apply(lambda x: f"{x:.2f}")
     
     st.dataframe(job_type_table, use_container_width=True, hide_index=True)
+
+# ============================================================================
+# PAGE 5: Plan vs Execution 
+# ============================================================================
+elif page == "Plan vs Execution":
+    st.title("📊 Plan vs Execution")
+    st.markdown("*How well do our PM plans match reality?*")
+
+    st.info("""
+    This dashboard compares **planned vs actual labor performance** across PMs, 
+    departments, intervals, and job types. Use the filters below and in the sidebar 
+    to explore planning accuracy patterns and execution discipline.
+    """)
+
+    # Filters 
+    st.markdown("### Filters")
+
+    col_f1, col_f2, col_f3 = st.columns(3)
+
+    with col_f1:
+        dept_filter = st.multiselect(
+            "Department", 
+            options=sorted(path2['DEPT_NAME'].dropna().unique()), 
+            default=[])
+
+    with col_f2:
+        interval_filter = st.multiselect(
+            "Interval",
+            options=sorted(path2['INTERVAL'].dropna().unique()),
+            default=[])
+
+    with col_f3:
+        job_type_filter = st.multiselect(
+            "Job Type", 
+            options=sorted(path2['JOB_TYPE'].dropna().unique()),
+            default=[])
+
+    # Apply Filters
+    path2_filtered = path2.copy()
+
+    if dept_filter:
+        path2_filtered = path2_filtered[path2_filtered['DEPT_NAME'].isin(dept_filter)]
+
+    if interval_filter:
+        path2_filtered = path2_filtered[path2_filtered['INTERVAL'].isin(interval_filter)]
+
+    if job_type_filter: 
+        path2_filtered =path2_filtered[path2_filtered['JOB_TYPE'].isin(job_type_filter)]
+
+    if path2_filtered.empty:
+        st.warning("No data for selected filters.")
+        st.stop()
+
+    # KPIs 
+    st.markdown('### Overall Performance')
+
+    fail_threshold = 0.75
+
+    avg_completion = path2_filtered['completion_rate'].mean()
+    avg_ontime = path2_filtered['on_time_rate'].mean()
+    avg_bias_hrs = (path2_filtered['AVG_ACTUAL_HRS'] - path2_filtered['AVG_PLANNED_HRS']).mean()
+    failing_pm_count = (path2_filtered['completion_rate'] < fail_threshold).sum()
+    total_pm_count = path2_filtered['PMNUM'].nunique()
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Avg Completion Rate", f"{avg_completion:.1%}")
+
+    with col2: 
+        st.metric("Avg On-Time Rate", f"{avg_ontime:.1%}")
+
+    with col3:
+        st.metric("Avg Hour Bias (Actual - Planned)", f"{avg_bias_hrs:.2f} hrs")
+
+    with col4: 
+        st.metric("Failing PMs (<75% complete)", f"{failing_pm_count} of {total_pm_count}")
+
+    st.write(f"Showing **{total_pm_count:,}** unique PMs based on selected filters.")
+    st.success("Execution looks **reasonably strong overall**, but specific departments and categories show opportunities to reduce bias.")
+
+    # Highlight message depending on average completion (use success/warning dynamically)
+    if avg_completion >= 0.80:
+        st.success("Execution looks strong overall based on selected filters.")
+    elif avg_completion >= 0.60:
+        st.warning("Execution shows moderate variation; improvement opportunities exist.")
+    else:
+        st.error("Execution appears weak under current filters; many PMs are failing to meet expectations.")
+    
+    st.divider()
+
+    # Failing threshold and worst PMs
+    st.markdown("### 🚨 Problem PMs")
+
+    fail_threshold = st.slider("Completion Rate Threshold for 'Failing' PMs",
+                               min_value=0.0,
+                               max_value=1.0,
+                               value=0.75,
+                               step=0.05)
+
+    failing = path2_filtered[path2_filtered['completion_rate'] < fail_threshold].copy()
+
+    if failing.empty:
+        st.info("No PMs below the selected completion threshold.")
+    else:
+        # Rank by completion then by hour deviation
+        failing['rank'] = failing['completion_rate'].rank(method='first')
+        worst_pms = (failing
+            .sort_values(['completion_rate', 'hour_deviation_pct'])
+            [['PMNUM', 'DEPT_NAME', 'INTERVAL', 'JOB_TYPE','completion_rate', 'on_time_rate',
+              'AVG_PLANNED_HRS', 'AVG_ACTUAL_HRS', 'hour_deviation_pct']]
+            .head(25))
+
+        # format %
+        worst_pms['completion_rate'] = (worst_pms['completion_rate'] * 100).round(1).astype(str) + '%'
+        worst_pms['on_time_rate'] = (worst_pms['on_time_rate'] * 100).round(1).astype(str) + '%'
+        worst_pms['hour_deviation_pct'] = (worst_pms['hour_deviation_pct']).round(1)
+
+        st.dataframe(worst_pms, use_container_width=True, hide_index=True)
+        st.caption("Worst-performing PMs based on the selected completion threshold, sorted by completion rate and hour deviation.")
+
+    st.divider()
+    
+    # Department execution
+    st.subheader("🏭 Department Execution Discipline")
+
+    dept_exec = (path2_filtered
+                 .groupby('DEPT_NAME', observed=True)
+                 .agg(avg_completion=('completion_rate', 'mean'),
+                      avg_ontime=('on_time_rate', 'mean'),
+                      n_pm=('PMNUM', 'nunique'))
+                 .reset_index())
+
+    # Sort by Completion rate
+    dept_exec = dept_exec.sort_values('avg_completion')
+
+    fig_dept = px.bar(dept_exec,
+                      x='avg_completion',
+                      y='DEPT_NAME', 
+                      orientation='h',
+                      color='avg_completion',
+                      color_continuous_scale='RdYlGn', 
+                      labels={'avg_completion': 'Avg Completion Rate', 'DEPT_NAME': 'Department'},
+                      title='Completion Rate by Department')
+
+    fig_dept.update_layout(xaxis_tickformat='.0%')
+    st.plotly_chart(fig_dept, use_container_width=True)
+    st.caption("Departments toward the top with higher completion and greener shading show stronger execution discipline.")
+
+
+    with st.expander('Show department table'):
+        tmp = dept_exec.copy()
+        tmp['avg_completion'] = (tmp['avg_completion'] * 100).round(1).astype(str) + '%'
+        tmp['avg_ontime'] = (tmp['avg_ontime'] * 100).round(1).astype(str) + '%'
+        st.dataframe(tmp, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # Accuracy by chosen category
+    st.subheader("🎯 Accuracy by Category")
+
+    category = st.selectbox("Group by:",
+                            options=['INTERVAL', 'JOB_TYPE', 'LABOR_CRAFT'])
+
+    cat_summary = (path2_filtered
+        .groupby(category, observed=True)
+        .agg(avg_completion=('completion_rate', 'mean'),
+            avg_ontime=('on_time_rate', 'mean'),
+            avg_hour_dev_pct=('hour_deviation_pct', 'mean'),
+            n_pm=('PMNUM', 'nunique'))
+        .reset_index()
+        .sort_values('avg_completion'))
+
+    fig_cat = px.bar(cat_summary,
+                     x='avg_completion',
+                     y=category,
+                     orientation='h',
+                     color='avg_hour_dev_pct',
+                     color_continuous_scale='RdYlGn_r',
+                     labels={'avg_completion': 'Avg Completion Rate',
+                             'avg_hour_dev_pct': 'Avg Hour Deviation %',
+                             category: category.replace('_', ' ').title()},
+                     title=f"Completion & Bias by {category.replace('_', ' ').title()}")
+    
+    fig_cat.update_layout(xaxis_tickformat=".0%")
+    st.plotly_chart(fig_cat, use_container_width=True)
+    st.caption("Use this view to see which intervals, job types, or crafts have lower completion or higher planning bias.")
+
+    with st.expander("Show category table"):
+        cat_tmp = cat_summary.copy()
+        cat_tmp['avg_completion'] = (cat_tmp['avg_completion'] * 100).round(1).astype(str) + '%'
+        cat_tmp['avg_ontime'] = (cat_tmp['avg_ontime'] * 100).round(1).astype(str) + '%'
+        cat_tmp['avg_hour_dev_pct'] = cat_tmp['avg_hour_dev_pct'].round(1)
+        st.dataframe(cat_tmp, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # Planning Bias
+    st.subheader("📐 Planning Bias – Planned vs Actual Labor Hours")
+
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        fig_hist = px.histogram(path2_filtered,
+                                x='hour_deviation_pct',
+                                nbins=40,
+                                title="Distribution of Hour Deviation % (Actual vs Planned)",
+                                labels={'hour_deviation_pct': 'Hour Deviation %'})
+        
+        fig_hist.add_vline(x=0, line_dash="dash")
+        st.plotly_chart(fig_hist, use_container_width=True)
+        st.caption("Bars to the right of 0 indicate overruns (actual > planned); bars to the left indicate underruns.")
+
+
+    with col_right:
+        fig_scatter = px.scatter(path2_filtered,
+                                 x='AVG_PLANNED_HRS',
+                                 y='AVG_ACTUAL_HRS',
+                                 color='performance_tier',
+                                 hover_data=['PMNUM', 'DEPT_NAME', 'INTERVAL'],
+                                 title="Planned vs Actual Hours by PM",
+                                 labels={'AVG_PLANNED_HRS': 'Planned Hours', 'AVG_ACTUAL_HRS': 'Actual Hours', 'performance_tier': 'Preformance Tier'})
+        
+        fig_scatter.add_shape(type="line",
+                              x0=0, y0=0,
+                              x1=path2_filtered['AVG_PLANNED_HRS'].max(),
+                              y1=path2_filtered['AVG_PLANNED_HRS'].max(),
+                              line=dict(dash="dash"))
+        
+        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.caption("Points far from the dashed line highlight PMs with large planning bias (over- or under-estimated hours).")
+
+    st.divider()
+
+    # Failing vs Successful PM
+    st.subheader("🧪 Failing vs Successful PM Characteristics")
+
+    failing = path2_filtered[path2_filtered['completion_rate'] < fail_threshold]
+    successful = path2_filtered[path2_filtered['completion_rate'] >= fail_threshold]
+
+    comp_df = pd.DataFrame({'Group': ['Failing PMs', 'Successful PMs'],
+                            'Avg Planned Hours': [failing['AVG_PLANNED_HRS'].mean(),
+                                                  successful['AVG_PLANNED_HRS'].mean()],
+                            'Avg Actual Hours': [failing['AVG_ACTUAL_HRS'].mean(),
+                                                 successful['AVG_ACTUAL_HRS'].mean()],
+                            'Avg Hour Deviation %': [failing['hour_deviation_pct'].mean(),
+                                                     successful['hour_deviation_pct'].mean()],
+                            'Avg Complexity Score': [failing['complexity_score'].mean(),
+                                                     successful['complexity_score'].mean()],
+                            'Count of PMs': [failing['PMNUM'].nunique(),
+                                             successful['PMNUM'].nunique()]})
+
+    st.dataframe(comp_df, use_container_width=True, hide_index=True)
+    st.caption("Compare how complexity, planned vs actual hours, and deviation differ between failing and successful PMs.")
+
+    st.divider()
+
+    # Monthly trends in completion 
+    st.subheader("🕒 Monthly Trends in Completion & On-Time Performance")
+
+    monthly = (path2_filtered
+        .groupby('due_month', observed=True)
+        .agg(avg_completion=('completion_rate', 'mean'),
+             avg_ontime=('on_time_rate', 'mean'),
+             total_pm=('PMNUM', 'nunique'))
+        .reset_index()
+        .sort_values('due_month'))
+
+    fig_trend = px.line(monthly,
+                        x='due_month',
+                        y=['avg_completion', 'avg_ontime'],
+                        labels={'value': 'Rate', 'due_month': 'Month', 'variable': 'Metric'},
+                        title="Monthly Completion vs On-Time Rate")
+
+    fig_trend.update_layout(yaxis_tickformat=".0%")
+    st.plotly_chart(fig_trend, use_container_width=True)
+    st.caption("Use this view to spot seasonal patterns, ramp-up periods, or sustained improvements/declines in execution performance.")
+
+    with st.expander("Show monthly table"):
+        mtmp = monthly.copy()
+        mtmp['avg_completion'] = (mtmp['avg_completion'] * 100).round(1).astype(str) + '%'
+        mtmp['avg_ontime'] = (mtmp['avg_ontime'] * 100).round(1).astype(str) + '%'
+        st.dataframe(mtmp, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # Complexity vs completion 
+    st.subheader("🧩 Complexity vs Completion Rate")
+
+    fig_complex = px.scatter(path2_filtered,
+                             x='complexity_score',
+                             y='completion_rate',
+                             color='performance_tier',
+                             hover_data=['PMNUM', 'DEPT_NAME', 'INTERVAL', 'JOB_TYPE'],
+                             labels={'complexity_score': 'Complexity Score',
+                                     'completion_rate': 'Completion Rate',
+                                     'performance_tier': 'Performance Tier'},
+                             title="Completion vs Complexity")
+    
+    fig_complex.update_layout(yaxis_tickformat=".0%")
+    st.plotly_chart(fig_complex, use_container_width=True)
+    st.caption("Helps identify whether low-complexity PMs are failing (process issue) or failures are concentrated in high-complexity work (expected risk).")
+    
+    # Download filtered data
+    csv_bytes = path2_filtered.to_csv(index=False).encode('utf-8')
+
+    st.download_button(label="📥 Download filtered Path 2 data (CSV)",
+                       data=csv_bytes,
+                       file_name="path2_filtered.csv",
+                       mime="text/csv")
+
